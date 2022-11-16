@@ -1,0 +1,8 @@
+.idea
+__pycache__
+modules/data
+modules/models
+prepare_data/data
+venv
+test.py
+test2.py
