@@ -48,9 +48,14 @@ def text_generationAPI():
     else:
         dialect = data['dialect']
 
+    if 'force_lenght' not in data:
+        force_lenght = None
+    else:
+        force_lenght = data['force_lenght']
+
     text_num = data['text_num'] if 'text_num' in data else 5
     result = gpt2.generate_newTexts(model, texts=begin_texts, sent_label=sentiment, topic_label=topic,
-                                    dialect_label=dialect, texts_num=text_num)
+                                    dialect_label=dialect, texts_num=text_num,force_lenght=force_lenght)
     return jsonify(result), 200
 
 

@@ -216,20 +216,39 @@ class GPT2_Sentiment():
         else:
             sent = "<|" + kwargs['dialect'].title() + "|>" + "<|" + kwargs['topic'].title() + "|>" + "<|" + kwargs[
                 'sentiment'] + "|>" + ' ' + kwargs['text']
+
         st = datetime.datetime.now()
-        gen_txt = model(sent, max_length=150, num_return_sequences=kwargs['texts_num'])
+        gen_txt = model(sent, max_length=300, num_return_sequences=kwargs['texts_num'])
+        if kwargs['is_1st_time']:
+            text = gen_txt[0]['generated_text'].split(">")[-1].strip()
+        else:
+            text = " ".join(kwargs['first_text'].split()[:-4]) + " " + gen_txt[0]['generated_text'].split(">")[-1].strip()
+
+        if (kwargs['force_lenght'] != None) and len(text) < kwargs['force_lenght']:
+            print("lenght of generated text <100 so i'll keep on . . .")
+            print(text)
+            new_text = " ".join(text.split()[-4:])
+            gen_txt = self.__tagged_Text(model, text=new_text, sentiment=kwargs['sentiment'], topic=kwargs['topic'],
+                                         dialect=kwargs['dialect'],
+                                         texts_num=kwargs['texts_num'], force_lenght=kwargs['force_lenght'],
+                                         is_1st_time=False, first_text=text)
+
         end = datetime.datetime.now()
         print(end - st)
-        return gen_txt
+        if kwargs['is_1st_time']:
+            return gen_txt
+        else:
+            gen_txt[0]['generated_text'] = text
+            return gen_txt
 
     def generate_newTexts(self, model, texts=[], sent_label='positive', topic_label='political',
                           dialect_label='Modern Standard Arabic',
-                          texts_num=10):
+                          texts_num=10, force_lenght=None):
         result = []
         for txt in texts:
             gen_txt = self.__tagged_Text(model, text=txt, sentiment=sent_label, topic=topic_label,
                                          dialect=dialect_label,
-                                         texts_num=texts_num)
+                                         texts_num=texts_num, force_lenght=force_lenght, is_1st_time=True)
             print('Begin Text: ', txt)
             tmp_list = []
             for t in gen_txt:
@@ -246,17 +265,18 @@ import cProfile, sys
 # from mpi4py.MPI import COMM_WORLD
 
 if __name__ == '__main__':
-    pr = cProfile.Profile()
-    pr.enable()
+    # pr = cProfile.Profile()
+    # pr.enable()
 
     gpt2 = GPT2_Sentiment()
-    model = gpt2.run_trainSteps(is_first_run=True)
-    # model = gpt2.load_finetuneModel()
+    # model = gpt2.run_trainSteps(is_first_run=True)
+    model = gpt2.load_finetuneModel()
     begin_texts = ['روسيا']
+    # begin_texts = ['حلب الشمال السور ال']
     # begin_texts = ['today', 'Zahra and her husband', 'Iran', 'Trump', 'Joe Biden tells']
     gpt2.generate_newTexts(model, texts=begin_texts, sent_label='positive', topic_label='politics',
-                           dialect_label='gulf of aden', texts_num=1)
+                           dialect_label='gulf of aden', texts_num=1, force_lenght=100)
 
-    pr.disable()
-
-    pr.dump_stats('profiling.prof')
+    # pr.disable()
+    #
+    # pr.dump_stats('profiling.prof')
