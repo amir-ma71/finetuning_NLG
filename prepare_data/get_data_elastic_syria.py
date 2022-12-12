@@ -2,36 +2,17 @@ from langdetect import detect, DetectorFactory
 import re
 from elasticsearch import Elasticsearch
 import sys
-from normalizer.TextNormalizer import Normalizer
-
-norm_ar = Normalizer(language='ar', remove_extra_spaces=True,
-                     rtl_style=True,
-                     rtl_numbers_refinement=True,
-                     remove_diacritics=False,
-                     affix_spacing=True,
-                     remove_repeated_chars=False,
-                     punctuation_spacing=True,
-                     hashtags_refinement=True,
-                     entity_cleaning=False,
-                     remove_punctuation=False,
-                     remove_email=True,
-                     remove_url=True,
-                     remove_mobile_number=False,
-                     remove_home_number=False,
-                     remove_emoji=False,
-                     remove_mention=True,
-                     remove_html=True,
-                     remove_numbers=True,
-                     remove_english=True,
-                     remove_newline=True)
-
 
 def cleaner(x):
-    x = re.sub(r'[^\w\s]', '', x)
-    x = re.sub(r'\n', '', x)
+    # x = re.sub(r'\n', ' ', x)  # remove ENTER
+    x = re.sub(r'~', '', x)  # remove ~ as sep
+    x = re.sub(r'"', '', x)  # remove "
+
+    # x = re.sub(r"(?:\@|https?\://)\S+", "", x)  # remove mentions and links
+    # x = re.sub(r'\s*[A-Za-z]+\b', '', x)  # remove english char
+    # x = re.sub(r'(\W)(?=\1)', '', x)  # remove repeated punctuation
     x = x.strip()
     return x
-
 
 sys.path.insert(1, './project_src')
 
@@ -41,14 +22,14 @@ es = Elasticsearch(['https://1400584:WelN&R+N7gH6l&ti@yekta.kavosh.org:9200'], v
 def searching(user_query):
     res = es.search(index="sy-tw-posts*", body=user_query, scroll='2m', size=5000)
     # print(res)
-    total = 1300000
+    total = 13000000
     old_scroll_id = res['_scroll_id']
 
     user_id_checklist = []
     scroll_counter = 0
     hold_scrol = 0
     print("all post: ", total)
-    file_name = "./data/syria_corpus.csv"
+    file_name = "./data/syria_corpus2.csv"
     with open(file_name, "a", encoding="utf-8") as file_object:
         # file_object.write("clean_text\n")
         while scroll_counter < total:
@@ -58,17 +39,18 @@ def searching(user_query):
 
                 text = doc["_source"]["text"]
 
-                clean_text = cleaner(norm_ar.normalize(text))
+                post_id = doc["_source"]["id_str"]
 
-                if (len(clean_text) >= 70):
+                if (len(text) >= 70):
 
                     try:
-                        if detect(clean_text) == "ar":
-                            file_object.write(clean_text)
+                        if detect(text) == "ar":
+                            row = '"' + post_id + '"~"' + cleaner(text) + '"'
+                            file_object.write(row)
                             file_object.write('\n')
                             scroll_counter += 1
                     except:
-                        print(clean_text)
+                        print(text)
             try:
                 print(scroll_counter)
                 res = es.scroll(scroll_id=old_scroll_id, scroll='2m')
@@ -90,18 +72,11 @@ user_query = {
                 {
                     "range": {
                         "created_at": {
-                            "lt": "Sun Nov 05 00:00:00 +0000 2022"
+                            "lt": "Sun Dec 01 00:00:00 +0000 2022"
                         }
                     }
                 }
             ]
-        }
-    },
-    "sort": {
-        "_script": {
-            "script": "Math.random()",
-            "type": "number",
-            "order": "asc"
         }
     }
 }
